@@ -1,0 +1,12 @@
+# SafeWatch 확인용 웹 화면 (SafeWatch_FE)
+
+# OS · 에디터
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# 나중에 Flutter 나 빌드 도구를 쓰게 되면 추가한다
+node_modules/
+dist/
+build/
