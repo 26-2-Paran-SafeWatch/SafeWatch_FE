@@ -38,6 +38,9 @@ export const s = StyleSheet.create({
   live: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   liveDot: { width: 7, height: 7, borderRadius: 4 },
   liveText: { ...label, fontSize: 10, letterSpacing: 2 },
+  userRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 },
+  userName: { ...t, color: C.dim, fontSize: 13 },
+  logout: { ...label, color: C.faint, fontSize: 10, letterSpacing: 2 },
 
   hero: { marginTop: 44 },
   heroNum: { ...t, fontSize: 120, fontWeight: '200', lineHeight: 128, letterSpacing: -6 },
@@ -119,4 +122,46 @@ export const d = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 12 },
   btn: { height: 54, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   btnText: { ...t, fontSize: 15, fontWeight: '600', letterSpacing: 1 },
+});
+
+// 소개 화면 (Landing.js) · 로그인 화면 (Login.js)
+export const l = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg, overflow: 'hidden', justifyContent: 'center' },
+  glow: { position: 'absolute' },
+  center: { alignItems: 'center', paddingHorizontal: 24 },
+
+  eyebrow: { ...label, textAlign: 'center' },
+  headline: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 14, marginTop: 18, maxWidth: 640 },
+  word: { ...t, fontSize: 52, fontWeight: '300', lineHeight: 64, letterSpacing: -1.5 },
+  accent: { color: C.red, fontWeight: '500', textShadowColor: 'rgba(232,33,39,0.6)', textShadowRadius: 24 },
+  sub: { ...t, color: C.dim, fontSize: 16, lineHeight: 26, textAlign: 'center', marginTop: 22 },
+
+  ctaWrap: { marginTop: 44, alignItems: 'center', justifyContent: 'center' },
+  ctaRing: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 999, borderWidth: 1, borderColor: C.text },
+  cta: { backgroundColor: C.text, borderRadius: 999, paddingHorizontal: 40, paddingVertical: 18 },
+  ctaText: { ...t, color: '#000', fontSize: 16, fontWeight: '600', letterSpacing: 0.5 },
+
+  features: { flexDirection: 'row', marginTop: 64 },
+  feature: { alignItems: 'center', paddingHorizontal: 20 },
+  featureLine: { borderLeftWidth: StyleSheet.hairlineWidth, borderColor: C.faint },
+  featureTag: { ...label, color: C.faint, fontSize: 9, letterSpacing: 2.5 },
+  featureLabel: { ...t, fontSize: 13, marginTop: 6 },
+
+  footer: { ...label, color: C.faint, fontSize: 9, letterSpacing: 2.5, textAlign: 'center', position: 'absolute', bottom: 28, left: 0, right: 0 },
+
+  form: { width: '100%', maxWidth: 420, alignSelf: 'center', paddingHorizontal: 24 },
+  formBack: { position: 'absolute', top: -80, left: 24 },
+  formTitle: { ...t, fontSize: 40, fontWeight: '300', textAlign: 'center', marginTop: 10, marginBottom: 36 },
+  field: { marginBottom: 16 },
+  fieldLabel: { ...label, color: C.faint, fontSize: 10, marginBottom: 8 },
+  input: {
+    ...t, fontSize: 16, height: 54, paddingHorizontal: 18, borderRadius: 14,
+    backgroundColor: C.card, borderWidth: 1, borderColor: C.line, outlineStyle: 'none',
+  },
+  inputFocused: { borderColor: C.text },
+  formError: { ...t, color: '#ff6b6b', fontSize: 13, marginBottom: 12, textAlign: 'center' },
+  submit: { height: 56, borderRadius: 14, backgroundColor: C.text, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  submitText: { ...t, color: '#000', fontSize: 16, fontWeight: '600' },
+  switch: { ...t, color: C.dim, fontSize: 14, textAlign: 'center', marginTop: 24 },
+  switchLink: { color: C.text, fontWeight: '600' },
 });

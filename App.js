@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Easing, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
-import { api } from './api';
+import { api, setToken } from './api';
 import { ND, formatTime, hhmm, riskOf, scoreColor, statusOf, useLoop } from './common';
 import EventDetail from './EventDetail';
+import Landing from './Landing';
+import Login from './Login';
 import { C, s } from './styles';
 
 // 숫자가 바뀌면 이전 값에서 새 값까지 올라가며 보여준다.
@@ -57,7 +59,7 @@ function Stat({ value, label }) {
   );
 }
 
-function Header({ events, error }) {
+function Header({ events, error, user, onLogout }) {
   const list = events ?? [];
   const unreviewed = useCountUp(list.filter((e) => e.status === 'new').length);
   const total = useCountUp(list.length);
@@ -67,6 +69,12 @@ function Header({ events, error }) {
       <View style={s.top}>
         <Text style={s.brand}>SAFEWATCH</Text>
         <LiveBadge ok={!error} />
+      </View>
+      <View style={s.userRow}>
+        <Text style={s.userName}>{user.displayName ?? user.email}</Text>
+        <Pressable onPress={onLogout} hitSlop={8}>
+          <Text style={s.logout}>LOGOUT</Text>
+        </Pressable>
       </View>
       {error && <ErrorBanner message={error} />}
       <View style={s.hero}>
@@ -152,7 +160,7 @@ function EventCard({ event, index, fresh, onPress }) {
   );
 }
 
-export default function App() {
+function Events({ user, onLogout }) {
   const [events, setEvents] = useState(null); // null = 아직 한 번도 못 받음 (로딩 중)
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -195,7 +203,7 @@ export default function App() {
         renderItem={({ item, index }) => (
           <EventCard event={item} index={index} fresh={fresh.current.has(item.id)} onPress={() => setOpenId(item.id)} />
         )}
-        ListHeaderComponent={<Header events={events} error={error} />}
+        ListHeaderComponent={<Header events={events} error={error} user={user} onLogout={onLogout} />}
         ListEmptyComponent={events === null
           ? !error && <Skeleton />
           : <Text style={s.empty}>아직 감지된 위험이 없습니다.</Text>}
@@ -211,7 +219,23 @@ export default function App() {
           onChange={(updated) => setEvents((list) => list.map((e) => (e.id === updated.id ? updated : e)))}
         />
       )}
-      <StatusBar style="light" />
     </View>
+  );
+}
+
+// 화면 순서: 소개 → 로그인 → 이벤트 목록
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [screen, setScreen] = useState('landing'); // 로그인 전: 'landing' | 'login'
+
+  const logout = () => { setToken(null); setUser(null); setScreen('landing'); };
+
+  return (
+    <>
+      {user ? <Events user={user} onLogout={logout} />
+        : screen === 'login' ? <Login onBack={() => setScreen('landing')} onLogin={setUser} />
+        : <Landing onStart={() => setScreen('login')} />}
+      <StatusBar style="light" />
+    </>
   );
 }
