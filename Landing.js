@@ -1,11 +1,18 @@
 // 앱을 열면 처음 보이는 소개 화면. 검정 바탕 위로 빨강·파랑 빛이 천천히 떠다닌다.
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Platform, Pressable, Text, View } from 'react-native';
 import { ND, useLoop } from './common';
-import { l } from './styles';
+import { useTheme } from './styles';
 
-// 떠다니는 빛 한 덩이. 작은 원에 큰 그림자를 줘서 번지게 만든다.
+// 원의 가장자리를 뭉개서 빛처럼 보이게 한다.
+// 웹은 CSS 블러가 깔끔하다. 폰은 블러가 안드로이드에서만 돼서 큰 그림자로 번지게 한다.
+const soften = (size, color) => (Platform.OS === 'web'
+  ? { filter: `blur(${size * 0.35}px)` }
+  : { boxShadow: `0 0 ${size * 1.2}px ${size * 0.8}px ${color}` });
+
+// 떠다니는 빛 한 덩이.
 function Glow({ color, size, top, left, dx, dy, duration }) {
+  const { l } = useTheme();
   const v = useLoop(duration);
   const move = (d) => v.interpolate({ inputRange: [0, 1], outputRange: [-d, d] });
   return (
@@ -13,8 +20,9 @@ function Glow({ color, size, top, left, dx, dy, duration }) {
       pointerEvents="none"
       style={[l.glow, {
         width: size, height: size, borderRadius: size / 2, top, left, backgroundColor: color,
-        boxShadow: `0 0 ${size * 1.2}px ${size * 0.8}px ${color}`,
-        transform: [{ translateX: move(dx) }, { translateY: move(dy) }],
+        ...soften(size, color),
+        // 웹은 블러로 가장자리가 옅어지는 만큼 원을 두 배로 키운다
+        transform: [{ translateX: move(dx) }, { translateY: move(dy) }, { scale: Platform.OS === 'web' ? 2 : 1 }],
       }]}
     />
   );
@@ -43,6 +51,7 @@ const FEATURES = [
 ];
 
 export default function Landing({ onStart }) {
+  const { l } = useTheme();
   const ring = useLoop(1400);
   const press = useRef(new Animated.Value(1)).current;
   const to = (v) => Animated.spring(press, { toValue: v, speed: 40, bounciness: 8, useNativeDriver: ND }).start();

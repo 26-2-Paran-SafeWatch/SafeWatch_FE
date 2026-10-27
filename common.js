@@ -1,7 +1,7 @@
 // 목록 화면과 상세 화면이 함께 쓰는 값과 함수
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, Platform } from 'react-native';
-import { C } from './styles';
+import { ACCENT as C } from './styles';
 
 // 서버 값(DB CHECK 제약과 같은 값) → 화면에 보일 이름과 영문 태그
 export const RISK = {
@@ -12,11 +12,11 @@ export const RISK = {
 };
 export const STATUS = {
   new: { label: '미확인', color: C.blue },
-  reviewed: { label: '무시함', color: C.faint },
+  reviewed: { label: '무시함', color: C.gray },
   reported: { label: '신고함', color: C.red },
 };
 export const riskOf = (e) => RISK[e.riskType] ?? { label: e.riskType, tag: 'RISK' };
-export const statusOf = (e) => STATUS[e.status] ?? { label: e.status, color: C.faint };
+export const statusOf = (e) => STATUS[e.status] ?? { label: e.status, color: C.gray };
 
 // 웹에는 네이티브 애니메이션 모듈이 없어서 JS 로 돌린다.
 export const ND = Platform.OS !== 'web';

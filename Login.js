@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { api, setToken } from './api';
 import { ND } from './common';
-import { C, l, d } from './styles';
+import { useTheme } from './styles';
 
 function Field({ label, ...props }) {
+  const { C, l } = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <View style={l.field}>
@@ -24,6 +25,7 @@ function Field({ label, ...props }) {
 }
 
 export default function Login({ onBack, onLogin }) {
+  const { d, l } = useTheme();
   const [mode, setMode] = useState('login'); // 'login' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

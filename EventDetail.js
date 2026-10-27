@@ -1,18 +1,21 @@
 // 이벤트를 눌렀을 때 오른쪽에서 밀려 들어오는 상세 화면. 영상 + 감지 정보 + 신고·무시 버튼.
+// 영상 보관·파기 규칙은 서버가 지킨다(노션 9,10주차). 이 화면은 남은 기간을 보여주고 파기 전에 경고만 한다.
 import { useEffect, useRef, useState } from 'react';
-import { Animated, BackHandler, Easing, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, BackHandler, Easing, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { api } from './api';
 import { ND, formatTime, riskOf, scoreColor, statusOf, useLoop } from './common';
-import { C, s, d } from './styles';
+import { useTheme } from './styles';
 
 function Video({ event }) {
+  const { d } = useTheme();
   // 웹 브라우저는 소리 있는 영상의 자동재생을 막아서 음소거로 시작한다. 컨트롤에서 소리를 켤 수 있다.
   const player = useVideoPlayer(event.videoUrl ?? null, (p) => { p.loop = true; p.muted = true; p.play(); });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   const blink = useLoop(600);
   const failed = !event.videoUrl || status === 'error';
+  const deleted = !!event.videoDeletedAt;
 
   return (
     <View style={d.video}>
@@ -23,7 +26,13 @@ function Video({ event }) {
         <Text style={d.recText}>REC · {formatTime(event.detectedAt)}</Text>
       </View>
       {status === 'loading' && !failed && <Text style={d.videoMsg}>LOADING</Text>}
-      {failed && (
+      {deleted && (
+        <View style={d.videoFail}>
+          <Text style={d.videoMsg}>영상이 파기되었습니다</Text>
+          <Text style={d.videoUrl}>{formatTime(event.videoDeletedAt)} 파기 · 보관 정책에 따라 복구할 수 없습니다</Text>
+        </View>
+      )}
+      {failed && !deleted && (
         <View style={d.videoFail}>
           <Text style={d.videoMsg}>영상을 불러올 수 없습니다</Text>
           <Text style={d.videoUrl} numberOfLines={1}>{event.videoUrl ?? '영상 주소 없음'}</Text>
@@ -33,7 +42,56 @@ function Video({ event }) {
   );
 }
 
+// 영상 아래 "D-13 · 11/9 14:03 자동 파기 예정". 사흘 이하로 남으면 빨갛게.
+function Retention({ event }) {
+  const { C, d } = useTheme();
+  if (!event.videoExpiresAt) return null;
+  const days = Math.max(0, Math.ceil((new Date(event.videoExpiresAt) - Date.now()) / 86400000));
+  const urgent = days <= 3;
+  return (
+    <View style={d.retention}>
+      <Text style={[d.retentionDay, urgent && { color: C.red }]}>D-{days}</Text>
+      <Text style={d.retentionText}>{formatTime(event.videoExpiresAt)} 자동 파기 예정 · 영상은 2주간만 보관됩니다</Text>
+    </View>
+  );
+}
+
+// 무시 전 경고. 가운데로 튀어나오며 뜬다.
+function ConfirmPurge({ visible, onCancel, onConfirm }) {
+  const { C, s, d } = useTheme();
+  const pop = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (visible) {
+      pop.setValue(0);
+      Animated.spring(pop, { toValue: 1, speed: 14, bounciness: 8, useNativeDriver: ND }).start();
+    }
+  }, [visible]);
+  const scale = pop.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable style={d.backdrop} onPress={onCancel}>
+        {/* 카드 안을 눌렀을 때는 닫히지 않게 이벤트를 여기서 멈춘다 */}
+        <Pressable onPress={() => {}}>
+          <Animated.View style={[d.dialog, { opacity: pop, transform: [{ scale }] }]}>
+            <Text style={[s.tag, { color: C.red, textAlign: 'center' }]}>WARNING</Text>
+            <Text style={d.dialogTitle}>신고하지 않으면{'\n'}영상이 파기됩니다</Text>
+            <Text style={d.dialogBody}>
+              무시하면 이 이벤트의 영상이 즉시 삭제되며 되돌릴 수 없습니다.{'\n'}
+              신고가 필요하다면 먼저 신고해 주세요.
+            </Text>
+            <View style={d.actions}>
+              <ActionButton title="취소" color={C.dim} onPress={onCancel} />
+              <ActionButton title="파기하고 무시" color={C.red} filled onPress={onConfirm} />
+            </View>
+          </Animated.View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 function Info({ label, value }) {
+  const { d } = useTheme();
   return (
     <View style={d.infoRow}>
       <Text style={d.infoLabel}>{label}</Text>
@@ -43,6 +101,7 @@ function Info({ label, value }) {
 }
 
 function ActionButton({ title, color, filled, busy, onPress }) {
+  const { d } = useTheme();
   const press = useRef(new Animated.Value(1)).current;
   const to = (v) => Animated.spring(press, { toValue: v, speed: 40, bounciness: 6, useNativeDriver: ND }).start();
   return (
@@ -55,10 +114,12 @@ function ActionButton({ title, color, filled, busy, onPress }) {
 }
 
 export default function EventDetail({ event, onBack, onChange }) {
+  const { C, s, d } = useTheme();
   const { width } = useWindowDimensions();
   const slide = useRef(new Animated.Value(0)).current;
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
+  const [confirming, setConfirming] = useState(false);
   const color = scoreColor(event.riskScore);
   const risk = riskOf(event);
   const status = statusOf(event);
@@ -94,7 +155,7 @@ export default function EventDetail({ event, onBack, onChange }) {
             <Text style={d.back}>‹  BACK</Text>
           </Pressable>
           <View style={[s.pill, { borderColor: status.color }]}>
-            <Text style={[s.pillText, { color: status.color === C.faint ? C.dim : status.color }]}>{status.label}</Text>
+            <Text style={[s.pillText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
 
@@ -110,6 +171,7 @@ export default function EventDetail({ event, onBack, onChange }) {
         </View>
 
         <Video event={event} />
+        <Retention event={event} />
 
         <View style={d.info}>
           <Info label="PLATE" value={event.plateNumber ?? '번호판 미인식'} />
@@ -128,13 +190,21 @@ export default function EventDetail({ event, onBack, onChange }) {
           {event.status === 'new' ? (
             <>
               <ActionButton title="신고하기" color={C.red} filled busy={busy === 'reported'} onPress={() => setStatus('reported')} />
-              <ActionButton title="무시" color={C.dim} busy={busy === 'reviewed'} onPress={() => setStatus('reviewed')} />
+              <ActionButton title="무시" color={C.dim} busy={busy === 'reviewed'} onPress={() => setConfirming(true)} />
             </>
+          ) : event.status === 'reviewed' ? (
+            // 영상이 이미 파기돼서 되돌려도 의미가 없다
+            <Text style={d.finalNote}>무시한 이벤트입니다 · 영상은 파기되었습니다</Text>
           ) : (
             <ActionButton title="미확인으로 되돌리기" color={C.dim} busy={busy === 'new'} onPress={() => setStatus('new')} />
           )}
         </View>
       </ScrollView>
+      <ConfirmPurge
+        visible={confirming}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => { setConfirming(false); setStatus('reviewed'); }}
+      />
     </Animated.View>
   );
 }

@@ -6,7 +6,7 @@ import { ND, formatTime, hhmm, riskOf, scoreColor, statusOf, useLoop } from './c
 import EventDetail from './EventDetail';
 import Landing from './Landing';
 import Login from './Login';
-import { C, s } from './styles';
+import { THEMES, ThemeContext, useTheme, useTimeMode } from './styles';
 
 // 숫자가 바뀌면 이전 값에서 새 값까지 올라가며 보여준다.
 function useCountUp(target, ms = 900) {
@@ -29,6 +29,7 @@ function useCountUp(target, ms = 900) {
 }
 
 function LiveBadge({ ok }) {
+  const { C, s } = useTheme();
   const v = useLoop(800);
   const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [1, 0.2] });
   return (
@@ -40,6 +41,7 @@ function LiveBadge({ ok }) {
 }
 
 function ErrorBanner({ message }) {
+  const { s } = useTheme();
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => { Animated.spring(v, { toValue: 1, useNativeDriver: ND }).start(); }, []);
   const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [-16, 0] });
@@ -51,6 +53,7 @@ function ErrorBanner({ message }) {
 }
 
 function Stat({ value, label }) {
+  const { s } = useTheme();
   return (
     <View style={s.stat}>
       <Text style={s.statNum}>{value}</Text>
@@ -60,6 +63,7 @@ function Stat({ value, label }) {
 }
 
 function Header({ events, error, user, onLogout }) {
+  const { s } = useTheme();
   const list = events ?? [];
   const unreviewed = useCountUp(list.filter((e) => e.status === 'new').length);
   const total = useCountUp(list.length);
@@ -95,6 +99,7 @@ function Header({ events, error, user, onLogout }) {
 }
 
 function Skeleton() {
+  const { s } = useTheme();
   const v = useLoop(700);
   const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.8] });
   return [0, 1, 2].map((i) => <Animated.View key={i} style={[s.card, s.skeleton, { opacity }]} />);
@@ -102,6 +107,7 @@ function Skeleton() {
 
 // fresh: 화면을 연 뒤에 새로 들어온 이벤트. 맨 위로 미끄러져 들어오며 빨갛게 번쩍인다.
 function EventCard({ event, index, fresh, onPress }) {
+  const { s } = useTheme();
   const enter = useRef(new Animated.Value(0)).current;
   const bar = useRef(new Animated.Value(0)).current;
   const flash = useRef(new Animated.Value(fresh ? 0.35 : 0)).current;
@@ -147,7 +153,7 @@ function EventCard({ event, index, fresh, onPress }) {
             <Text style={s.meta}>{event.plateNumber ?? '번호판 미인식'} · {formatTime(event.detectedAt)}</Text>
           </View>
           <View style={[s.pill, { borderColor: status.color }]}>
-            <Text style={[s.pillText, { color: status.color === C.faint ? C.dim : status.color }]}>{status.label}</Text>
+            <Text style={[s.pillText, { color: status.color }]}>{status.label}</Text>
           </View>
         </View>
         <View style={s.track}>
@@ -161,6 +167,7 @@ function EventCard({ event, index, fresh, onPress }) {
 }
 
 function Events({ user, onLogout }) {
+  const { C, s } = useTheme();
   const [events, setEvents] = useState(null); // null = 아직 한 번도 못 받음 (로딩 중)
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -224,18 +231,21 @@ function Events({ user, onLogout }) {
 }
 
 // 화면 순서: 소개 → 로그인 → 이벤트 목록
+// 테마는 시각으로 정한다: 06:00~18:00 주간, 그 외 야간 (styles.js 의 useTimeMode)
 export default function App() {
+  const mode = useTimeMode();
   const [user, setUser] = useState(null);
   const [screen, setScreen] = useState('landing'); // 로그인 전: 'landing' | 'login'
 
   const logout = () => { setToken(null); setUser(null); setScreen('landing'); };
 
   return (
-    <>
+    <ThemeContext.Provider value={THEMES[mode]}>
       {user ? <Events user={user} onLogout={logout} />
         : screen === 'login' ? <Login onBack={() => setScreen('landing')} onLogin={setUser} />
         : <Landing onStart={() => setScreen('login')} />}
-      <StatusBar style="light" />
-    </>
+      {/* 상태바 글씨는 바탕과 반대 색 */}
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+    </ThemeContext.Provider>
   );
 }
