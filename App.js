@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Easing, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
 import { api, setToken } from './api';
-import { ND, formatTime, hhmm, riskOf, scoreColor, statusOf, useLoop } from './common';
+import { ND, formatTime, hhmm, levelOf, riskOf, statusOf, useLoop } from './common';
 import EventDetail from './EventDetail';
 import Landing from './Landing';
 import Login from './Login';
@@ -112,11 +112,12 @@ function EventCard({ event, index, fresh, onPress }) {
   const bar = useRef(new Animated.Value(0)).current;
   const flash = useRef(new Animated.Value(fresh ? 0.35 : 0)).current;
   const press = useRef(new Animated.Value(1)).current;
-  const color = scoreColor(event.riskScore);
+  const level = levelOf(event);
+  const color = level.color;
   const risk = riskOf(event);
   const status = statusOf(event);
   // 위험도 높은데 아직 확인 안 한 것만 숨쉬듯 빛난다
-  const hot = event.riskScore >= 80 && event.status === 'new';
+  const hot = event.riskLevel === 'high' && event.status === 'new';
   const pulse = useLoop(1000, hot);
 
   useEffect(() => {
@@ -150,7 +151,7 @@ function EventCard({ event, index, fresh, onPress }) {
           <View style={s.body}>
             <Text style={[s.tag, { color }]}>{risk.tag}</Text>
             <Text style={s.riskType}>{risk.label}</Text>
-            <Text style={s.meta}>{event.plateNumber ?? '번호판 미인식'} · {formatTime(event.detectedAt)}</Text>
+            <Text style={s.meta}>{level.label} · {formatTime(event.detectedAt)}</Text>
           </View>
           <View style={[s.pill, { borderColor: status.color }]}>
             <Text style={[s.pillText, { color: status.color }]}>{status.label}</Text>

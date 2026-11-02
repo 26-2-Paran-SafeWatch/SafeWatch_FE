@@ -5,8 +5,12 @@ import { Animated, BackHandler, Easing, Modal, Pressable, ScrollView, Text, View
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { api } from './api';
-import { ND, formatTime, riskOf, scoreColor, statusOf, useLoop } from './common';
+import { ND, formatTime, levelOf, reasonsOf, riskOf, statusOf, useLoop } from './common';
 import { useTheme } from './styles';
+
+// "15초 · 1280x720 · 블러 처리됨"
+const clipSummary = (c) => [c.duration_sec && `${c.duration_sec}초`, c.resolution, c.blurred && '블러 처리됨']
+  .filter(Boolean).join(' · ');
 
 function Video({ event }) {
   const { d } = useTheme();
@@ -32,13 +36,36 @@ function Video({ event }) {
           <Text style={d.videoUrl}>{formatTime(event.videoDeletedAt)} 파기 · 보관 정책에 따라 복구할 수 없습니다</Text>
         </View>
       )}
-      {failed && !deleted && (
+      {/* 영상 주소가 아직 없음 = 전송 방식(AI 문서 1장)이 정해지기 전이거나, 정차 후 업로드를 기다리는 중 */}
+      {!event.videoUrl && !deleted && (
+        <View style={d.videoFail}>
+          <Text style={d.videoMsg}>{event.clip ? '영상 업로드 대기 중' : '영상 없음'}</Text>
+          {event.clip && <Text style={d.videoUrl}>{clipSummary(event.clip)}</Text>}
+        </View>
+      )}
+      {event.videoUrl && status === 'error' && (
         <View style={d.videoFail}>
           <Text style={d.videoMsg}>영상을 불러올 수 없습니다</Text>
-          <Text style={d.videoUrl} numberOfLines={1}>{event.videoUrl ?? '영상 주소 없음'}</Text>
+          <Text style={d.videoUrl} numberOfLines={1}>{event.videoUrl}</Text>
         </View>
       )}
     </View>
+  );
+}
+
+// 왜 위험하다고 판단했는지. AI 가 보낸 판단 근거 수치를 문장으로 보여준다(신고서에도 쓸 수 있는 내용).
+function Reasons({ event }) {
+  const { s, d } = useTheme();
+  const reasons = reasonsOf(event);
+  if (reasons.length === 0) return null;
+  const window = event.indicators?.observation_window_sec;
+  return (
+    <>
+      <Text style={s.section}>WHY · 판단 근거{window ? ` (최근 ${window}초 관측)` : ''}</Text>
+      <View style={[d.info, { marginTop: 0 }]}>
+        {reasons.map(([label, value]) => <Info key={label} label={label} value={value} />)}
+      </View>
+    </>
   );
 }
 
@@ -120,7 +147,8 @@ export default function EventDetail({ event, onBack, onChange }) {
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState(null);
   const [confirming, setConfirming] = useState(false);
-  const color = scoreColor(event.riskScore);
+  const level = levelOf(event);
+  const color = level.color;
   const risk = riskOf(event);
   const status = statusOf(event);
 
@@ -172,9 +200,11 @@ export default function EventDetail({ event, onBack, onChange }) {
 
         <Video event={event} />
         <Retention event={event} />
+        <Reasons event={event} />
 
         <View style={d.info}>
-          <Info label="PLATE" value={event.plateNumber ?? '번호판 미인식'} />
+          <Info label="LEVEL" value={level.label} />
+          <Info label="SPEED" value={event.speedKmh != null ? `${Math.round(event.speedKmh)} km/h (내 차)` : '-'} />
           <Info label="DETECTED" value={formatTime(event.detectedAt)} />
           <Info label="RECEIVED" value={formatTime(event.receivedAt)} />
           <Info
