@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Easing, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
-import { api, setToken } from './api';
+import { api, setOnExpired, setToken } from './api';
 import { ND, formatTime, hhmm, levelOf, riskOf, statusOf, useLoop } from './common';
 import EventDetail from './EventDetail';
 import Landing from './Landing';
@@ -239,6 +239,8 @@ export default function App() {
   const [screen, setScreen] = useState('landing'); // 로그인 전: 'landing' | 'login'
 
   const logout = () => { setToken(null); setUser(null); setScreen('landing'); };
+  // 토큰이 만료되면 소개 화면이 아니라 바로 로그인 화면으로
+  setOnExpired(() => { setUser(null); setScreen('login'); });
 
   return (
     <ThemeContext.Provider value={THEMES[mode]}>

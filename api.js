@@ -8,6 +8,11 @@ export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://safewatch.co.
 let token = null;
 export const setToken = (t) => { token = t; };
 
+// 로그인한 상태에서 서버가 401 을 주면(토큰 만료 2시간, 위조 등) 부를 함수. App 이 로그인 화면으로 연결한다.
+// 로그인 화면의 "비밀번호 틀림" 401 은 토큰이 없을 때라 여기 걸리지 않는다.
+let onExpired = () => {};
+export const setOnExpired = (fn) => { onExpired = fn; };
+
 // 서버에 요청을 보내고 JSON 을 돌려준다.
 // 실패하면 서버가 보낸 사유 문구를 그대로 에러로 던진다 — 화면에 그대로 띄우면 된다.
 // 입력값 검증 실패(400)는 detail 이 뭉뚱그린 문구라, 칸별 사유(errors)의 첫 번째를 쓴다.
@@ -23,6 +28,11 @@ export async function api(path, options = {}) {
   const text = await res.text();
   let body = null;
   try { body = text ? JSON.parse(text) : null; } catch { /* JSON 이 아닌 응답 */ }
+  if (res.status === 401 && token) {
+    token = null;
+    onExpired();
+    throw new Error('로그인이 만료되었습니다. 다시 로그인해 주세요');
+  }
   if (!res.ok) {
     const fieldError = body?.errors && Object.values(body.errors)[0];
     throw new Error(fieldError ?? body?.detail ?? `요청 실패 (${res.status})`);
