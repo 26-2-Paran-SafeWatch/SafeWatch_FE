@@ -1,6 +1,6 @@
 // 이벤트를 눌렀을 때 오른쪽에서 밀려 들어오는 상세 화면. 영상 + 감지 정보 + 신고·무시 버튼.
 // 영상 보관·파기 규칙은 서버가 지킨다(노션 9,10주차). 이 화면은 남은 기간을 보여주고 파기 전에 경고만 한다.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, BackHandler, Easing, Modal, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useEvent } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -15,8 +15,18 @@ const clipSummary = (c) => [c.duration_sec && `${c.duration_sec}초`, c.resoluti
 function Video({ event }) {
   const { d } = useTheme();
   // 웹 브라우저는 소리 있는 영상의 자동재생을 막아서 음소거로 시작한다. 컨트롤에서 소리를 켤 수 있다.
-  const player = useVideoPlayer(event.videoUrl ?? null, (p) => { p.loop = true; p.muted = true; p.play(); });
+  // 서버는 목록을 받을 때마다 서명이 다른 새 임시 주소를 준다. 주소가 바뀌면 재생기가 처음부터 다시 불러오므로(5초마다 리셋)
+  // 같은 파일(? 앞부분이 같음)이면 처음 받은 주소를 계속 쓴다.
+  // ponytail: 상세 화면을 1시간 넘게 열어두면 주소가 만료된다. 그럴 일이 생기면 만료 전에 새로 받기.
+  const url = useMemo(() => event.videoUrl, [event.videoUrl?.split('?')[0]]);
+  const player = useVideoPlayer(url ?? null, (p) => { p.loop = true; p.muted = true; p.play(); });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
+  // 웹은 위 setup 의 play() 가 영상 요소가 화면에 붙기 전에 불려서 무시된다 → 처음 준비됐을 때 한 번만 재생
+  // (매번 부르면 일시정지 후 되감기할 때 저절로 다시 재생된다)
+  const started = useRef(false);
+  useEffect(() => {
+    if (status === 'readyToPlay' && !started.current) { started.current = true; player.play(); }
+  }, [status, player]);
   const blink = useLoop(600);
   const failed = !event.videoUrl || status === 'error';
   const deleted = !!event.videoDeletedAt;

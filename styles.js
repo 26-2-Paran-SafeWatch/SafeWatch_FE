@@ -121,7 +121,8 @@ function build(C) {
       width: '100%', aspectRatio: 16 / 9, backgroundColor: '#050506', borderRadius: 20,
       borderWidth: 1, borderColor: C.line, overflow: 'hidden', alignItems: 'center', justifyContent: 'center',
     },
-    videoView: { ...StyleSheet.absoluteFillObject },
+    // 웹의 <video> 는 위·아래·좌·우 0 만으로는 늘어나지 않고 원래 크기(1920x1080)로 그려져, 넘친 부분과 함께 조작 막대가 잘린다 → 크기를 직접 지정
+    videoView: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
     videoFail: { alignItems: 'center', paddingHorizontal: 24 },
     videoMsg: { ...label, color: '#8a8a90', letterSpacing: 2 },
     videoUrl: { ...t, color: '#5a5a60', fontSize: 11, marginTop: 8 },

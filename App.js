@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Easing, FlatList, Pressable, RefreshControl, Text, View } from 'react-native';
-import { api, setOnExpired, setToken } from './api';
+import { api, hasToken, setOnExpired, setToken } from './api';
 import { ND, formatTime, hhmm, levelOf, riskOf, statusOf, useLoop } from './common';
 import EventDetail from './EventDetail';
 import Landing from './Landing';
@@ -236,7 +236,14 @@ function Events({ user, onLogout }) {
 export default function App() {
   const mode = useTimeMode();
   const [user, setUser] = useState(null);
-  const [screen, setScreen] = useState('landing'); // 로그인 전: 'landing' | 'login'
+  // 로그인 전: 'landing' | 'login'. 저장된 토큰이 있으면 'restoring' 으로 시작해 /me 로 로그인을 이어간다.
+  const [screen, setScreen] = useState(hasToken() ? 'restoring' : 'landing');
+
+  useEffect(() => {
+    if (!hasToken()) return;
+    // 만료·위조면 api 가 401 → onExpired 로 로그인 화면. 서버에 못 닿으면 소개 화면.
+    api('/api/auth/me').then(setUser).catch(() => setScreen((s) => (s === 'restoring' ? 'landing' : s)));
+  }, []);
 
   const logout = () => { setToken(null); setUser(null); setScreen('landing'); };
   // 토큰이 만료되면 소개 화면이 아니라 바로 로그인 화면으로
@@ -245,6 +252,7 @@ export default function App() {
   return (
     <ThemeContext.Provider value={THEMES[mode]}>
       {user ? <Events user={user} onLogout={logout} />
+        : screen === 'restoring' ? null
         : screen === 'login' ? <Login onBack={() => setScreen('landing')} onLogin={setUser} />
         : <Landing onStart={() => setScreen('login')} />}
       {/* 상태바 글씨는 바탕과 반대 색 */}
